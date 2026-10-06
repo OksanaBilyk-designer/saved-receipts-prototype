@@ -36,7 +36,21 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": true,
+      "baseUrl": "/saved-receipts-prototype"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "316f7ad4-9594-4059-9c70-e29df7c21ea3"
+      }
+    },
+    "owner": "oksanadesigner",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/316f7ad4-9594-4059-9c70-e29df7c21ea3"
     }
   }
 }

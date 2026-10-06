@@ -1,0 +1,37 @@
+{
+  "name": "Saved Receipts Prototype",
+  "short_name": "Saved Receipts",
+  "description": "Clickable usability-testing prototype for the Saved Receipts flow.",
+  "start_url": "/saved-receipts-prototype/",
+  "scope": "/saved-receipts-prototype/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#142641",
+  "theme_color": "#142641",
+  "icons": [
+    {
+      "src": "/saved-receipts-prototype/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/saved-receipts-prototype/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/saved-receipts-prototype/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/saved-receipts-prototype/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
