@@ -49,11 +49,30 @@ export default function Root({ children }: PropsWithChildren) {
 
         {/* Phone-frame layout: fixed 390px mobile width, centered on wider viewports */}
         <style dangerouslySetInnerHTML={{ __html: webAppShellCss }} />
+
+        {/* Register the service worker so the app is installable (Chrome/Android
+            "Install app") and launches offline. Scoped to the GitHub Pages
+            subpath so it only controls this prototype. */}
+        <script dangerouslySetInnerHTML={{ __html: serviceWorkerRegistration }} />
       </head>
       <body>{children}</body>
     </html>
   );
 }
+
+const serviceWorkerRegistration = `
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker
+        .register('/saved-receipts-prototype/service-worker.js', {
+          scope: '/saved-receipts-prototype/',
+        })
+        .catch(function (err) {
+          console.warn('Service worker registration failed:', err);
+        });
+    });
+  }
+`;
 
 const webAppShellCss = `
   :root {
