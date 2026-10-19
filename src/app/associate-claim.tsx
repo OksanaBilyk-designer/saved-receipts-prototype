@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,26 +13,55 @@ import { claimsPendingDocumentation } from '@/data/mock-data';
 
 /**
  * Associate With Claim page (Requirement 6 & 7).
- * Lists Claim_Pending_Documentation records with single-select radio,
- * Skip always available, Submit enabled only once a claim is selected.
- * Saving (Submit or Skip) returns to Saved Receipts with confirmation.
+ * Lists Claim_Pending_Documentation records with single-select.
+ *
+ * Two entry modes:
+ * - New-upload flow (no receiptId param): Save persists the just-uploaded
+ *   receipt to Saved Receipts (associated to the selected claim, if any) and
+ *   returns to the list.
+ * - Existing-receipt flow (receiptId param, from Receipt Details): Save
+ *   associates the selected claim with that existing receipt, then navigates to
+ *   the full-page "Claim Sent for Review!" confirmation screen.
+ *
+ * Both actions are always enabled; Back returns without saving.
  */
 export default function AssociateClaimScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { saveReceiptAndAssociate } = useAppState();
+  const { receiptId } = useLocalSearchParams<{ receiptId?: string }>();
+  const { saveReceiptAndAssociate, associateClaimWithReceipt } = useAppState();
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
 
-  const finishAndReturn = (claimId: string | null) => {
-    saveReceiptAndAssociate(claimId);
+  // Save behaviour depends on how this screen was reached.
+  const handleSave = () => {
+    if (receiptId) {
+      // Existing-receipt flow: record the association, then show the full-page
+      // confirmation screen (passing the claim so it can show the summary).
+      if (selectedClaimId) {
+        associateClaimWithReceipt(receiptId, selectedClaimId);
+      }
+      router.replace({
+        pathname: '/claim-confirmation',
+        params: selectedClaimId ? { claimId: selectedClaimId } : {},
+      });
+      return;
+    }
+
+    // New-upload flow: persist the draft receipt and return to the list.
+    saveReceiptAndAssociate(selectedClaimId);
     router.dismissAll();
     router.replace('/saved-receipts');
+  };
+
+  // Back: return to the previous screen without saving anything.
+  const handleBack = () => {
+    router.back();
   };
 
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + Spacing.sm }]}>
-        <IconButton icon="back" onPress={() => router.back()} />
+        <IconButton icon="back" onPress={handleBack} />
         <AppText variant="body1Bold16" style={{ flex: 1 }}>
           Associate With Claim (Optional)
         </AppText>
@@ -65,17 +94,18 @@ export default function AssociateClaimScreen() {
       />
 
       <View style={styles.actionBar}>
+        {/* Back: return without saving. Always enabled. */}
         <AppButton
-          label="Skip"
+          label="Back"
           variant="secondary"
-          onPress={() => finishAndReturn(null)}
+          onPress={handleBack}
           style={{ flex: 1 }}
         />
+        {/* Save: always enabled; saves with or without an associated claim. */}
         <AppButton
-          label="Submit"
+          label="Save"
           variant="primary"
-          disabled={!selectedClaimId}
-          onPress={() => finishAndReturn(selectedClaimId)}
+          onPress={handleSave}
           style={{ flex: 1 }}
         />
       </View>

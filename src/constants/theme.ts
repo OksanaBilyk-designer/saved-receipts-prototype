@@ -33,7 +33,20 @@ export const Colors = {
 
   // Feedback
   success: '#19b269',
+  successContainer: '#e8f7f0',
   danger: '#e72626',
+  warning: '#f9c134',
+  warningContainer: '#fef9eb',
+  warningBorder: '#fdecc0',
+
+  // Tags / legend (Activity Details claim card)
+  legendTag: '#bcd1ef',
+
+  // Snackbar (dark, confirmation on Activity Details)
+  snackbarDark: '#0f1621',
+
+  // Confirmation modal hero (dark teal-green, "Claim Sent for Review!")
+  confirmationHero: '#0f4c40',
 
   // My Documents folder tints
   receiptsTint: '#f2f8f9',
@@ -46,9 +59,17 @@ export const Colors = {
   pharmacy: '#d83b00',
   dental: '#176af6',
   vision: '#481a54',
+
+  // Home Expenses_List transaction cards (Figma node 889:5544)
+  txOther: '#ff9d0a',
+  txNonClaimBg: '#e5e9f0',
+  // Action_Required_Indicator text color (Figma: claim-submission/missing-detail)
+  actionRequired: '#fb6d2a',
 } as const;
 
 export const Typography = {
+  h1Bold32: { fontSize: 32, lineHeight: 44, fontWeight: '700' as const },
+  h3Bold20: { fontSize: 20, lineHeight: 28, fontWeight: '700' as const },
   h2Bold24: { fontSize: 24, lineHeight: 32, fontWeight: '700' as const },
   oswaldBold52: { fontSize: 36, lineHeight: 40, fontWeight: '700' as const }, // scaled down from 52/32 header display for mobile viewport fit
   body1Regular16: { fontSize: 16, lineHeight: 22, fontWeight: '400' as const },

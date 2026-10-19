@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import FileIcon from '@/assets/figma/claim/add-file-tile.svg';
 import { AppButton } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { IconButton } from '@/components/ui/icon-button';
@@ -66,7 +67,7 @@ export default function UploadReceiptScreen() {
         <View style={styles.fileCard}>
           <View style={styles.fileCardLeft}>
             <View style={styles.fileIcon}>
-              <AppText>📄</AppText>
+              <FileIcon width={24} height={24} />
             </View>
             <AppText variant="body2Regular14" numberOfLines={1} style={{ flex: 1 }}>
               {uploadDraft.fileName}
@@ -76,11 +77,18 @@ export default function UploadReceiptScreen() {
         </View>
 
         <View style={styles.preview}>
-          <View style={[styles.previewArea, { backgroundColor: uploadDraft.thumbnailColor }]}>
-            <View style={styles.previewPaper} />
+          <View style={styles.previewArea}>
+            {uploadDraft.image ? (
+              <Image source={uploadDraft.image} style={styles.previewImage} resizeMode="contain" />
+            ) : (
+              <View style={styles.previewPaper} />
+            )}
           </View>
           <View style={styles.thumbnailStrip}>
-            <View style={[styles.thumbnail, { backgroundColor: uploadDraft.thumbnailColor }]}>
+            <View style={styles.thumbnail}>
+              {uploadDraft.image ? (
+                <Image source={uploadDraft.image} style={styles.thumbnailImage} resizeMode="cover" />
+              ) : null}
               <View style={styles.thumbnailBadge}>
                 <AppText variant="captionMedium12" color={Colors.textOnColor}>
                   1
@@ -105,7 +113,9 @@ export default function UploadReceiptScreen() {
                   label={type}
                   selected={uploadDraft.type === type}
                   onPress={() => updateDraftType(type)}
-                  style={{ flex: type === 'Receipt' ? 0 : 1 }}
+                  // "Receipt" hugs its label; "Letter of Medical Necessity"
+                  // takes the remaining width (matches Figma chip row).
+                  style={type === 'Receipt' ? { flexShrink: 0 } : { flex: 1 }}
                 />
               ))}
             </View>
@@ -191,8 +201,15 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Colors.border1,
+    backgroundColor: Colors.canvas,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    padding: Spacing.sm,
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
   },
   previewPaper: {
     width: 160,
@@ -212,17 +229,24 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     borderWidth: 2,
     borderColor: Colors.accentActive,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-    padding: 2,
+    backgroundColor: Colors.canvas,
+    overflow: 'hidden',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
   thumbnailBadge: {
+    position: 'absolute',
+    top: 2,
+    left: 2,
     width: 20,
     height: 20,
     borderRadius: 4,
     backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
   },
   detailsCard: {
     backgroundColor: Colors.canvas,

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/ui/button';
@@ -19,21 +19,16 @@ export default function GalleryPickerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { uploadDraft, startUpload, replaceDraftFile } = useAppState();
-  const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const filtered = galleryPhotos.filter((p) =>
-    p.label.toLowerCase().includes(query.toLowerCase()),
-  );
 
   const confirmSelection = () => {
     const photo = galleryPhotos.find((p) => p.id === selectedId) ?? galleryPhotos[0];
     // If an upload is already in progress, this was opened via "Change File" (Req 5.5/5.6):
     // replace the file in place instead of starting a brand new draft.
     if (uploadDraft) {
-      replaceDraftFile(`${photo.label}.jpg`, photo.color);
+      replaceDraftFile(`${photo.label}.jpg`, photo.color, photo.image);
     } else {
-      startUpload(`${photo.label}.jpg`, photo.color);
+      startUpload(`${photo.label}.jpg`, photo.color, photo.image);
     }
     router.replace('/upload-receipt');
   };
@@ -41,28 +36,11 @@ export default function GalleryPickerScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + Spacing.sm }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.cancel}>
-          <AppText variant="body1Regular16" color={Colors.textAccent}>
-            Cancel
-          </AppText>
-        </Pressable>
         <AppText variant="body1Bold16">Gallery</AppText>
-        <View style={{ width: 64 }} />
-      </View>
-
-      <View style={styles.searchBar}>
-        <AppText color={Colors.textSecondary}>⌕</AppText>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search photos"
-          placeholderTextColor={Colors.textSecondary}
-          style={styles.searchInput}
-        />
       </View>
 
       <FlatList
-        data={filtered}
+        data={galleryPhotos}
         keyExtractor={(item) => item.id}
         numColumns={NUM_COLUMNS}
         contentContainerStyle={styles.grid}
@@ -72,8 +50,17 @@ export default function GalleryPickerScreen() {
           return (
             <Pressable
               onPress={() => setSelectedId(item.id)}
-              style={[styles.photo, { backgroundColor: item.color }, selected && styles.photoSelected]}
+              style={[
+                styles.photo,
+                item.contain && styles.photoContainBg,
+                selected && styles.photoSelected,
+              ]}
             >
+              <Image
+                source={item.image}
+                style={[styles.photoImage, item.contain && styles.photoImageContain]}
+                resizeMode={item.contain ? 'contain' : 'cover'}
+              />
               {selected && (
                 <View style={styles.checkBadge}>
                   <AppText variant="captionMedium12" color={Colors.textOnColor}>
@@ -112,23 +99,10 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
   },
-  cancel: { width: 64 },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.module,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    height: 44,
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-  },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.textBody },
   grid: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: 140,
@@ -147,6 +121,31 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     padding: Spacing.xs,
     overflow: 'hidden',
+    backgroundColor: Colors.module,
+    borderWidth: 1,
+    borderColor: Colors.border1,
+  },
+  photoImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  photoImageContain: {
+    // Inset the contained (receipt) image so the whole thing fits inside the
+    // tile with padding, and leave clear space for the label at the bottom.
+    top: Spacing.xs,
+    left: Spacing.xs,
+    right: Spacing.xs,
+    bottom: 24,
+    width: undefined,
+    height: undefined,
+  },
+  photoContainBg: {
+    backgroundColor: Colors.canvas,
   },
   photoSelected: {
     borderWidth: 3,
@@ -164,9 +163,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   photoLabel: {
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderRadius: 4,
     paddingHorizontal: 4,
+    paddingVertical: 1,
+    overflow: 'hidden',
   },
   actionBar: {
     position: 'absolute',

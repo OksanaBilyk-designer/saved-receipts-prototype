@@ -1,38 +1,74 @@
-import type { ClaimPendingDocumentation, Receipt } from './types';
+import type { Claim, ClaimPendingDocumentation, Expense, Receipt } from './types';
 
-/** Realistic seed data for the Saved Receipts prototype. No backend involved. */
+/**
+ * Realistic seed data for the Saved Receipts prototype. No backend involved.
+ *
+ * Six Saved_Receipts populate the Select_Saved_Receipt_Page grid/list. They
+ * reuse the receipt photos already bundled in assets/figma/folders (no new
+ * image files): the Amazon One Medical letter, and the Giant Rx pharmacy
+ * receipts in their various crops. r-1 stays first (it's the one the rest of
+ * the flow references as the Dental LMN).
+ */
 export const initialReceipts: Receipt[] = [
   {
     id: 'r-1',
-    name: 'CVS Pharmacy_Receipt.jpg',
-    type: 'Receipt',
-    merchant: 'CVS Pharmacy',
-    date: '10/02/26',
-    thumbnailColor: '#f2f8f9',
-  },
-  {
-    id: 'r-2',
     name: 'Dental 2025_LMN.pdf',
     type: 'Letter of Medical Necessity',
     merchant: 'Bright Smile Dental',
-    date: '09/21/26',
+    date: '10/10/25',
+    dateRange: '10/10/25 - 10/12/25',
     thumbnailColor: '#f3f2f9',
+    image: require('@/assets/figma/folders/receipt-thumb.jpeg'),
+  },
+  {
+    id: 'r-2',
+    name: '2026_Receipt.pdf',
+    type: 'Receipt',
+    merchant: 'Taller Drugs',
+    date: '10/10/25',
+    dateRange: '10/10/25 - 10/12/25',
+    thumbnailColor: '#f2f8f9',
+    image: require('@/assets/figma/folders/receipt-3.jpeg'),
   },
   {
     id: 'r-3',
-    name: 'Walgreens_Receipt.jpg',
+    name: 'Amazon_Receipt.pdf',
     type: 'Receipt',
-    merchant: 'Walgreens',
-    date: '09/14/26',
-    thumbnailColor: '#f2f8f9',
+    merchant: 'Amazon One Medical',
+    date: '10/10/25',
+    dateRange: '10/10/25 - 10/12/25',
+    thumbnailColor: '#ffffff',
+    image: require('@/assets/figma/folders/receipt-1.jpeg'),
   },
   {
     id: 'r-4',
-    name: 'Vision Center_Receipt.pdf',
+    name: 'Pharmacy_Receipt.pdf',
     type: 'Receipt',
-    merchant: 'ClearView Vision Center',
-    date: '08/30/26',
+    merchant: 'Giant Rx',
+    date: '10/10/25',
+    dateRange: '10/10/25 - 10/12/25',
     thumbnailColor: '#f2f8f9',
+    image: require('@/assets/figma/folders/receipt-2.jpeg'),
+  },
+  {
+    id: 'r-5',
+    name: 'Vision_Receipt.pdf',
+    type: 'Receipt',
+    merchant: 'Giant Rx',
+    date: '10/10/25',
+    dateRange: '10/10/25 - 10/12/25',
+    thumbnailColor: '#f2f8f9',
+    image: require('@/assets/figma/folders/receipt-thumb.jpeg'),
+  },
+  {
+    id: 'r-6',
+    name: 'Medical_Receipt.pdf',
+    type: 'Receipt',
+    merchant: 'Amazon One Medical',
+    date: '10/10/25',
+    dateRange: '10/10/25 - 10/12/25',
+    thumbnailColor: '#ffffff',
+    image: require('@/assets/figma/folders/receipt-1.jpeg'),
   },
 ];
 
@@ -67,22 +103,158 @@ export const claimsPendingDocumentation: ClaimPendingDocumentation[] = [
   },
 ];
 
+/**
+ * Home_Page Expenses_List. Ordered as shown in the Figma Home design
+ * (node 889:5496): the Dental entry is the Claim_Needing_Documentation and
+ * carries the Action_Required_Indicator.
+ */
+export const initialExpenses: Expense[] = [
+  {
+    id: 'e-1',
+    label: 'Dental',
+    amount: '$199.00',
+    date: 'April 14',
+    month: 'April',
+    category: 'Dental',
+    tile: 'dental',
+    claimId: 'claim-1',
+  },
+  {
+    id: 'e-2',
+    label: 'Other',
+    amount: '$10.00',
+    date: 'April 1',
+    month: 'April',
+    category: 'Other',
+    tile: 'other',
+    claimId: 'claim-2',
+  },
+  {
+    id: 'e-3',
+    label: 'Transfer of as...',
+    amount: '$89.00',
+    date: 'April 1',
+    month: 'April',
+    category: 'Transfer',
+    tile: 'transfer',
+    claimId: 'claim-3',
+  },
+];
+
+/**
+ * Claims backing the Expenses_List. Only claim-1 (Dental, Dr. van Nostrand)
+ * is a Claim_Needing_Documentation — matching the "Needs help" Activity
+ * Details design (node 889:5359). The others are already Processing, so they
+ * have no documentation request.
+ */
+export const initialClaims: Claim[] = [
+  {
+    id: 'claim-1',
+    providerName: 'Dr. van Nostrand',
+    dependantName: 'Linda Smith',
+    dependantRelationship: '(Spouse, 45 years)',
+    category: 'Dental',
+    referenceNumber: '#1233-2353-53',
+    paidAmount: '$199.00',
+    requestedAmount: '$199.00',
+    approvedAmount: '$199.00',
+    serviceDate: '10/07/20',
+    serviceProvided: 'Dental',
+    invoice: '1234141',
+    paymentTag: 'Reimburse Me',
+    paidAmountLabel: 'Paid amount',
+    requestedAmountLabel: 'Requested amount',
+    serviceDateLabel: 'Service date',
+    status: 'needs-documentation',
+    requestFirstName: 'Michelle',
+    trackerDate: 'Mar 2',
+    activityDate: '2 March 2025',
+  },
+  {
+    id: 'claim-2',
+    providerName: 'Walgreens',
+    dependantName: 'Michelle Smith',
+    dependantRelationship: '(Self)',
+    category: 'Other',
+    referenceNumber: '#1233-2353-61',
+    paidAmount: '$10.00',
+    requestedAmount: '$10.00',
+    approvedAmount: '$10.00',
+    serviceDate: '04/01/26',
+    serviceProvided: 'Other',
+    invoice: '1234201',
+    paymentTag: 'Card Swipe',
+    paidAmountLabel: 'Paid amount',
+    requestedAmountLabel: 'Card swiped amount',
+    serviceDateLabel: 'Card swipe date',
+    status: 'processing',
+    requestFirstName: 'Michelle',
+    trackerDate: 'Mar 2',
+    activityDate: '2 March 2025',
+  },
+  {
+    id: 'claim-3',
+    providerName: 'HSA Transfer',
+    dependantName: 'Michelle Smith',
+    dependantRelationship: '(Self)',
+    category: 'Transfer',
+    referenceNumber: '#1233-2353-74',
+    paidAmount: '$89.00',
+    requestedAmount: '$89.00',
+    approvedAmount: '$89.00',
+    serviceDate: '04/01/26',
+    serviceProvided: 'Transfer of assets',
+    invoice: '1234233',
+    paymentTag: 'Card Swipe',
+    paidAmountLabel: 'Paid amount',
+    requestedAmountLabel: 'Card swiped amount',
+    serviceDateLabel: 'Card swipe date',
+    status: 'processing',
+    requestFirstName: 'Michelle',
+    trackerDate: 'Mar 2',
+    activityDate: '2 March 2025',
+  },
+];
+
 export type GalleryPhoto = {
   id: string;
   label: string;
   sizeLabel: string;
   color: string;
+  /** Realistic photo (require(...) source) shown in the picker grid. */
+  image: number;
+  /**
+   * When true, show the whole image (contain, white bg) rather than cropping —
+   * used for the Amazon receipt so the full receipt is visible.
+   */
+  contain?: boolean;
 };
 
-/** Fake gallery photos shown in the Gallery Picker. */
+/**
+ * Gallery Picker photos: one Amazon receipt (shown uncropped) plus two personal
+ * photos (a dog and a mountain). No other receipts/documents.
+ */
 export const galleryPhotos: GalleryPhoto[] = [
-  { id: 'p-1', label: 'Receipt 1', sizeLabel: '2.4 MB', color: '#dbe4ff' },
-  { id: 'p-2', label: 'Receipt 2', sizeLabel: '1.8 MB', color: '#ffe3d1' },
-  { id: 'p-3', label: 'IMG_0912', sizeLabel: '3.1 MB', color: '#d8f2e4' },
-  { id: 'p-4', label: 'IMG_0913', sizeLabel: '2.9 MB', color: '#fde2e4' },
-  { id: 'p-5', label: 'Pharmacy receipt', sizeLabel: '1.2 MB', color: '#e4d8f2' },
-  { id: 'p-6', label: 'IMG_0920', sizeLabel: '2.2 MB', color: '#fff3cd' },
-  { id: 'p-7', label: 'IMG_0921', sizeLabel: '1.9 MB', color: '#cdefff' },
-  { id: 'p-8', label: 'Dental invoice', sizeLabel: '2.6 MB', color: '#e8f0fe' },
-  { id: 'p-9', label: 'IMG_0930', sizeLabel: '3.4 MB', color: '#f2f8f9' },
+  {
+    id: 'p-1',
+    label: 'Receipt 1',
+    sizeLabel: '2.4 MB',
+    color: '#ffffff',
+    image: require('@/assets/figma/folders/receipt-1.jpeg'),
+    contain: true,
+  },
+  {
+    id: 'p-2',
+    label: 'IMG_0912',
+    sizeLabel: '3.1 MB',
+    color: '#d8f2e4',
+    image: require('@/assets/figma/folders/photo-dog.webp'),
+  },
+  {
+    id: 'p-3',
+    label: 'IMG_0913',
+    sizeLabel: '2.9 MB',
+    color: '#cdefff',
+    image: require('@/assets/figma/folders/photo-mountain.jpg'),
+  },
 ];

@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/text';
 import { Colors, Radius, Spacing } from '@/constants/theme';
@@ -9,33 +9,54 @@ export type ReceiptCardProps = {
   onPress?: () => void;
 };
 
-/** Matches the "My Documents / LMN Card" Figma component, reused for receipts. */
+/**
+ * Saved receipt row: a realistic receipt photo thumbnail + file name and date
+ * range. Matches the "My Documents / LMN Card" Figma component — the thumbnail
+ * is the real uploaded receipt image (no colored tint block).
+ */
 export function ReceiptCard({ receipt, onPress }: ReceiptCardProps) {
+  const claimCount = receipt.associatedClaimIds?.length ?? 0;
+
   return (
     <Pressable
       onPress={onPress}
       style={[styles.card, receipt.highlighted && styles.cardHighlighted]}
     >
-      <View style={[styles.thumbnail, { backgroundColor: receipt.thumbnailColor }]}>
-        <View style={styles.thumbnailInner} />
+      <View style={styles.thumbnail}>
+        {receipt.image ? (
+          <Image source={receipt.image} style={styles.thumbnailImage} resizeMode="cover" />
+        ) : (
+          // Fallback for newly uploaded receipts with no photo yet: a neutral
+          // paper placeholder (no colorful background).
+          <View style={styles.thumbnailPlaceholder}>
+            <View style={styles.thumbnailPaper} />
+          </View>
+        )}
       </View>
       <View style={styles.textBlock}>
         <AppText variant="body1Regular16" numberOfLines={1}>
           {receipt.name}
         </AppText>
         <View style={styles.metaRow}>
-          <AppText variant="captionMedium12" color={Colors.textSecondary}>
-            {receipt.date}
+          <AppText variant="captionMedium12" color={Colors.textSecondary} numberOfLines={1}>
+            {receipt.dateRange ?? receipt.date}
           </AppText>
-          <AppText variant="captionMedium12" color={Colors.textSecondary}>
-            {' · '}
-            {receipt.merchant}
-          </AppText>
+          {/* "Claims: N" badge — shown only when the receipt has associated
+              claims. Reflects the current association count dynamically. */}
+          {claimCount > 0 && (
+            <View style={styles.claimsBadge}>
+              <AppText variant="captionMedium12" color={Colors.textBody}>
+                Claims: {claimCount}
+              </AppText>
+            </View>
+          )}
         </View>
       </View>
     </Pressable>
   );
 }
+
+const THUMB = 56;
 
 const styles = StyleSheet.create({
   card: {
@@ -55,16 +76,28 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   thumbnail: {
-    width: 56,
-    height: 56,
+    width: THUMB,
+    height: THUMB,
     borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border1,
+    overflow: 'hidden',
+    backgroundColor: Colors.canvas,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailPlaceholder: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.canvas,
   },
-  thumbnailInner: {
-    width: 32,
-    height: 42,
-    borderRadius: 4,
+  thumbnailPaper: {
+    width: 28,
+    height: 38,
+    borderRadius: 3,
     backgroundColor: Colors.canvas,
     borderWidth: 1,
     borderColor: Colors.border1,
@@ -75,5 +108,14 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flexWrap: 'wrap',
+  },
+  claimsBadge: {
+    backgroundColor: Colors.module,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
   },
 });

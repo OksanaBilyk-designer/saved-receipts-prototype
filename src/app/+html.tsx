@@ -11,6 +11,16 @@ import type { PropsWithChildren } from 'react';
  * - critical CSS that renders the "phone frame" on desktop viewports and
  *   keeps the app pinned to a 390px-wide mobile layout at every breakpoint
  */
+/**
+ * Base path the static site is served under. Driven by EXPO_BASE_PATH so the
+ * same source can be deployed to multiple hosts without edits:
+ *   - GitHub Pages  -> /saved-receipts-prototype   (default)
+ *   - Elevate design bucket -> /public/admin/prototypes/saved-receipts
+ * Must match experiments.baseUrl in the Expo config. Always kept with a single
+ * trailing slash here for building absolute URLs.
+ */
+const BASE_PATH = (process.env.EXPO_BASE_PATH || '/saved-receipts-prototype').replace(/\/+$/, '') + '/';
+
 export default function Root({ children }: PropsWithChildren) {
   return (
     <html lang="en">
@@ -27,13 +37,12 @@ export default function Root({ children }: PropsWithChildren) {
           content="Clickable usability-testing prototype for the Saved Receipts flow."
         />
 
-        {/* PWA: manifest + icons
-            Paths are prefixed with the GitHub Pages project subpath
-            (see experiments.baseUrl in app.json) since this is deployed to
-            https://OksanaBilyk-designer.github.io/saved-receipts-prototype/ */}
-        <link rel="manifest" href="/saved-receipts-prototype/manifest.json" />
-        <link rel="icon" href="/saved-receipts-prototype/icons/icon-192.png" />
-        <link rel="apple-touch-icon" href="/saved-receipts-prototype/apple-touch-icon.png" />
+        {/* PWA: manifest + icons. Paths are prefixed with the deploy subpath
+            (EXPO_BASE_PATH, matching experiments.baseUrl in the Expo config)
+            so they resolve correctly whichever host this is deployed to. */}
+        <link rel="manifest" href={`${BASE_PATH}manifest.json`} />
+        <link rel="icon" href={`${BASE_PATH}icons/icon-192.png`} />
+        <link rel="apple-touch-icon" href={`${BASE_PATH}apple-touch-icon.png`} />
         <meta name="theme-color" content="#142641" />
 
         {/* iOS-specific "Add to Home Screen" support */}
@@ -64,8 +73,8 @@ const serviceWorkerRegistration = `
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
       navigator.serviceWorker
-        .register('/saved-receipts-prototype/service-worker.js', {
-          scope: '/saved-receipts-prototype/',
+        .register('${BASE_PATH}service-worker.js', {
+          scope: '${BASE_PATH}',
         })
         .catch(function (err) {
           console.warn('Service worker registration failed:', err);

@@ -11,10 +11,19 @@ export type SnackbarProps = {
   message: string;
   onHide: () => void;
   durationMs?: number;
+  /** Dark variant used for the Activity Details confirmation (vs. green success). */
+  dark?: boolean;
 };
 
-/** Green success snackbar matching the Figma "Snackbar" component. */
-export function Snackbar({ visible, boldPrefix, message, onHide, durationMs = 2600 }: SnackbarProps) {
+/** Snackbar matching the Figma "Snackbar" component (green success or dark). */
+export function Snackbar({
+  visible,
+  boldPrefix,
+  message,
+  onHide,
+  durationMs = 2600,
+  dark = false,
+}: SnackbarProps) {
   const [opacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
@@ -35,7 +44,10 @@ export function Snackbar({ visible, boldPrefix, message, onHide, durationMs = 26
   if (!visible) return null;
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.container, { opacity }]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.container, dark && styles.containerDark, { opacity }]}
+    >
       <AppText variant="body2Regular14" color={Colors.textOnColor}>
         <AppText variant="body2Bold14" color={Colors.textOnColor}>
           {boldPrefix}
@@ -57,5 +69,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     zIndex: 100,
+  },
+  containerDark: {
+    backgroundColor: Colors.snackbarDark,
   },
 });

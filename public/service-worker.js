@@ -9,7 +9,12 @@
  */
 
 const CACHE_NAME = 'saved-receipts-pwa-v1';
-const BASE = '/saved-receipts-prototype/';
+
+// Derive the base path from the service worker's own location so this file is
+// portable across deploy targets (GitHub Pages subpath, Elevate design bucket
+// subpath, or root) without being hardcoded to any one URL. The SW is served
+// from the prototype root, so its directory IS the base.
+const BASE = self.location.pathname.replace(/service-worker\.js$/, '');
 
 // Core shell resources worth pre-caching for an offline launch.
 const PRECACHE_URLS = [

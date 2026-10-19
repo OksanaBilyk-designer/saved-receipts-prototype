@@ -41,3 +41,9 @@ example
 # generated native folders
 /ios
 /android
+
+# SSH keys / local scratch (never commit)
+id_intellias
+id_intellias.pub
+serve-nocache.py
+/saved-receipts-prototype
