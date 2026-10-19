@@ -24,7 +24,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Node 24 matches the local toolchain that generates package-lock.json,
+          # so `npm ci` resolves the exact same tree (avoids lockfile mismatch).
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
