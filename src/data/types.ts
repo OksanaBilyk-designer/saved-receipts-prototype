@@ -87,6 +87,11 @@ export type Claim = {
   requestFirstName: string;
   trackerDate: string; // e.g. "Mar 2"
   activityDate: string; // e.g. "2 March 2025"
-  /** The receipt id attached to this claim, if any. */
+  /**
+   * The representative receipt id attached to this claim (the first one), kept
+   * for backward compatibility with consumers that expect a single id.
+   */
   attachedReceiptId?: string;
+  /** All receipt ids attached to this claim (Activity Details shows each). */
+  attachedReceiptIds?: string[];
 };

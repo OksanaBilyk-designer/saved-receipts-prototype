@@ -1,5 +1,6 @@
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
+import CheckmarkIcon from '@/assets/figma/claim/checkmark.svg';
 import { AppText } from '@/components/ui/text';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import type { Receipt } from '@/data/types';
@@ -7,20 +8,50 @@ import type { Receipt } from '@/data/types';
 export type ReceiptCardProps = {
   receipt: Receipt;
   onPress?: () => void;
+  /** When true, show a selection checkbox on the right (multi-select mode). */
+  selectable?: boolean;
+  /** Whether this receipt is currently selected. */
+  selected?: boolean;
+  /** Toggle selection — fired by the checkbox only, never by the card body. */
+  onToggleSelect?: () => void;
+  /**
+   * When true, the receipt is already attached to the current activity: the
+   * checkbox is shown checked + disabled (not toggleable) and an "Already
+   * attached" badge replaces the claims badge. The card body still opens it.
+   */
+  disabled?: boolean;
 };
 
 /**
  * Saved receipt row: a realistic receipt photo thumbnail + file name and date
  * range. Matches the "My Documents / LMN Card" Figma component — the thumbnail
  * is the real uploaded receipt image (no colored tint block).
+ *
+ * In multi-select mode (selectable) a checkbox is shown on the right. Tapping
+ * the checkbox toggles selection; tapping the rest of the card still opens the
+ * receipt (the checkbox has its own >=44x44 tap target so the two don't clash).
  */
-export function ReceiptCard({ receipt, onPress }: ReceiptCardProps) {
+export function ReceiptCard({
+  receipt,
+  onPress,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+  disabled = false,
+}: ReceiptCardProps) {
   const claimCount = receipt.associatedClaimIds?.length ?? 0;
+  // A disabled (already-attached) card always reads as checked.
+  const checked = disabled || selected;
 
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.card, receipt.highlighted && styles.cardHighlighted]}
+      style={[
+        styles.card,
+        receipt.highlighted && styles.cardHighlighted,
+        checked && styles.cardSelected,
+        disabled && styles.cardDisabled,
+      ]}
     >
       <View style={styles.thumbnail}>
         {receipt.image ? (
@@ -41,17 +72,46 @@ export function ReceiptCard({ receipt, onPress }: ReceiptCardProps) {
           <AppText variant="captionMedium12" color={Colors.textSecondary} numberOfLines={1}>
             {receipt.dateRange ?? receipt.date}
           </AppText>
-          {/* "Claims: N" badge — shown only when the receipt has associated
-              claims. Reflects the current association count dynamically. */}
-          {claimCount > 0 && (
+          {/* "Already attached" takes priority; otherwise the "Claims: N"
+              badge is shown when the receipt has associated claims. */}
+          {disabled ? (
             <View style={styles.claimsBadge}>
-              <AppText variant="captionMedium12" color={Colors.textBody}>
-                Claims: {claimCount}
+              <AppText variant="captionMedium12" color={Colors.textSecondary}>
+                Already attached
               </AppText>
             </View>
+          ) : (
+            claimCount > 0 && (
+              <View style={styles.claimsBadge}>
+                <AppText variant="captionMedium12" color={Colors.textBody}>
+                  Claims: {claimCount}
+                </AppText>
+              </View>
+            )
           )}
         </View>
       </View>
+
+      {selectable && (
+        <Pressable
+          onPress={disabled ? undefined : onToggleSelect}
+          disabled={disabled}
+          style={styles.checkboxHit}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked, disabled }}
+          accessibilityLabel={`Select ${receipt.name}`}
+        >
+          <View
+            style={[
+              styles.checkbox,
+              checked && styles.checkboxChecked,
+              disabled && styles.checkboxDisabled,
+            ]}
+          >
+            {checked && <CheckmarkIcon width={16} height={16} />}
+          </View>
+        </Pressable>
+      )}
     </Pressable>
   );
 }
@@ -74,6 +134,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.accentActive,
     boxShadow: `0px 6px 8px ${Colors.accentActive}80`,
     elevation: 4,
+  },
+  cardSelected: {
+    borderWidth: 2,
+    borderColor: Colors.accentActive,
+  },
+  cardDisabled: {
+    opacity: 0.6,
+    borderColor: Colors.border1,
   },
   thumbnail: {
     width: THUMB,
@@ -117,5 +185,33 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
+  },
+  checkboxHit: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Pull the oversized tap target toward the edge so the visible box still
+    // sits where the mock shows it without adding card width.
+    marginRight: -Spacing.xs,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: Radius.sm,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.canvas,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.accentActive,
+    borderColor: Colors.accentActive,
+  },
+  checkboxDisabled: {
+    // Already-attached: keep the checked fill but mute it so it reads as locked.
+    backgroundColor: Colors.border,
+    borderColor: Colors.border,
   },
 });

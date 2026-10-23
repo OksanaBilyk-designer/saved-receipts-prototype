@@ -15,25 +15,49 @@ import { claimsPendingDocumentation } from '@/data/mock-data';
  * Associate With Claim page (Requirement 6 & 7).
  * Lists Claim_Pending_Documentation records with single-select.
  *
- * Two entry modes:
- * - New-upload flow (no receiptId param): Save persists the just-uploaded
- *   receipt to Saved Receipts (associated to the selected claim, if any) and
- *   returns to the list.
+ * Three entry modes:
+ * - New-upload flow (no params): Save persists the just-uploaded receipt to
+ *   Saved Receipts (associated to the selected claim, if any) and returns to
+ *   the list.
  * - Existing-receipt flow (receiptId param, from Receipt Details): Save
  *   associates the selected claim with that existing receipt, then navigates to
  *   the full-page "Claim Sent for Review!" confirmation screen.
+ * - Multi-select flow (from=saved-receipts): Save associates the selected
+ *   claim with EVERY currently-selected receipt, clears the selection, then
+ *   shows the confirmation screen.
  *
  * Both actions are always enabled; Back returns without saving.
  */
 export default function AssociateClaimScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { receiptId } = useLocalSearchParams<{ receiptId?: string }>();
-  const { saveReceiptAndAssociate, associateClaimWithReceipt } = useAppState();
+  const { receiptId, from } = useLocalSearchParams<{ receiptId?: string; from?: string }>();
+  const {
+    saveReceiptAndAssociate,
+    associateClaimWithReceipt,
+    selectedReceiptIds,
+    clearSelectedReceipts,
+  } = useAppState();
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
+
+  const isMultiSelect = from === 'saved-receipts';
 
   // Save behaviour depends on how this screen was reached.
   const handleSave = () => {
+    if (isMultiSelect) {
+      // Multi-select flow: associate the chosen claim with every selected
+      // receipt, then clear the selection and confirm.
+      if (selectedClaimId) {
+        selectedReceiptIds.forEach((id) => associateClaimWithReceipt(id, selectedClaimId));
+      }
+      clearSelectedReceipts();
+      router.replace({
+        pathname: '/claim-confirmation',
+        params: selectedClaimId ? { claimId: selectedClaimId } : {},
+      });
+      return;
+    }
+
     if (receiptId) {
       // Existing-receipt flow: record the association, then show the full-page
       // confirmation screen (passing the claim so it can show the summary).
@@ -63,7 +87,7 @@ export default function AssociateClaimScreen() {
       <View style={[styles.topBar, { paddingTop: insets.top + Spacing.sm }]}>
         <IconButton icon="back" onPress={handleBack} />
         <AppText variant="body1Bold16" style={{ flex: 1 }}>
-          Associate With Claim (Optional)
+          Associate With Claim
         </AppText>
       </View>
 

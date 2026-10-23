@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,25 +9,22 @@ import { IconButton } from '@/components/ui/icon-button';
 import { AppText } from '@/components/ui/text';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/data/app-state';
-import type { Receipt } from '@/data/types';
-
-type ViewMode = 'grid' | 'list';
+import type { DocumentType, Receipt } from '@/data/types';
 
 /**
- * Select_Saved_Receipt_Page (attach-receipt-to-claim Requirements 4 & 6),
- * updated for multi-select.
+ * Select a Document (Activity Details -> Add Documents -> Saved Receipts).
  *
- * Header "Select Saved Receipts" + back, with a "Clear" action. Below it an
- * "X of N selected" counter and a grid/list view toggle. Each Saved_Receipt
- * carries a checkbox (>=44x44 tap target) that toggles its selection; tapping
- * the receipt image opens its full preview. A bottom action bar has "Close"
- * and "Submit" — Submit attaches every selected receipt to the Claim.
- * Built from Figma node 919:5887.
+ * Grid document picker: "Receipts" / "Letters of Medical Necessity" tabs
+ * (filtered by the real Receipt.type, counts from data), a "Display used
+ * receipts" toggle + Clear, a grid of receipt thumbnails each with a corner
+ * checkbox, "Already attached" tiles that can't be re-selected, and a
+ * Close / Submit action bar. Submit attaches the selected receipts to the
+ * current activity's claim. Built from Figma node 919:5887.
  */
 export default function SelectSavedReceiptScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { claimId } = useLocalSearchParams<{ claimId: string }>();
+  const { claimId } = useLocalSearchParams<{ claimId?: string }>();
   const {
     receipts,
     selectedReceiptIds,
@@ -35,37 +32,50 @@ export default function SelectSavedReceiptScreen() {
     isReceiptSelected,
     clearSelectedReceipts,
     attachReceiptsToClaim,
+    getClaimById,
   } = useAppState();
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<DocumentType>('Receipt');
+  const [showUsed, setShowUsed] = useState(false);
+
+  // Receipts already attached to this activity can't be selected again.
+  const attachedIds = useMemo(() => {
+    const claim = claimId ? getClaimById(claimId) : undefined;
+    return new Set(claim?.attachedReceiptIds ?? []);
+  }, [claimId, getClaimById]);
+
+  const receiptCount = receipts.filter((r) => r.type === 'Receipt').length;
+  const lmnCount = receipts.filter((r) => r.type === 'Letter of Medical Necessity').length;
+
+  const visible = useMemo(
+    () =>
+      receipts.filter(
+        (r) => r.type === activeTab && (showUsed || !attachedIds.has(r.id)),
+      ),
+    [receipts, activeTab, showUsed, attachedIds],
+  );
 
   const selectedCount = selectedReceiptIds.length;
 
-  const openPreview = (receiptId: string) => {
-    router.push({ pathname: '/select-document', params: { claimId: claimId ?? '', receiptId } });
+  // Tapping a receipt image opens the full preview, paging within the current
+  // tab's visible set (so Prev/Next stay consistent with what's on screen).
+  const openPreview = (id: string) => {
+    router.push({
+      pathname: '/select-document',
+      params: { receiptId: id, ids: visible.map((r) => r.id).join(',') },
+    });
   };
 
-  // Req 4.6: Close returns to the Activity_Details_Page without attaching.
   const handleClose = () => {
     clearSelectedReceipts();
     router.back();
   };
 
-  // Req 7: Submit attaches every Selected_Document to the Claim.
   const handleSubmit = () => {
     if (selectedCount === 0 || !claimId) return;
-    setSubmitting(true); // Req 7.3: disable Submit while in progress.
-    setError(null);
-    const ok = attachReceiptsToClaim(claimId, selectedReceiptIds);
-    if (!ok) {
-      // Req 7.4: on failure, keep the user here with the selection intact.
-      setSubmitting(false);
-      setError("We couldn't attach the document. Please try again.");
-      return;
-    }
+    attachReceiptsToClaim(claimId, selectedReceiptIds);
     clearSelectedReceipts();
-    router.back(); // Req 7.2: return to the Activity_Details_Page.
+    router.back();
   };
 
   return (
@@ -73,80 +83,81 @@ export default function SelectSavedReceiptScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <IconButton icon="back" onPress={handleClose} />
-            <AppText variant="body1Bold16" color={Colors.textTitle}>
-              Select Saved Receipts
-            </AppText>
-          </View>
-          <Pressable
-            onPress={clearSelectedReceipts}
-            disabled={selectedCount === 0}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Clear selection"
-          >
-            <AppText
-              variant="body1Bold16"
-              color={selectedCount === 0 ? Colors.textDisabled : Colors.textAccent}
-            >
-              Clear
-            </AppText>
-          </Pressable>
+          <IconButton icon="back" onPress={handleClose} />
+          <AppText variant="body1Bold16" color={Colors.textTitle}>
+            Select a Document
+          </AppText>
+        </View>
+
+        {/* Tabs */}
+        <View style={styles.tabs}>
+          <Tab
+            label={`Receipts (${receiptCount})`}
+            active={activeTab === 'Receipt'}
+            onPress={() => setActiveTab('Receipt')}
+          />
+          <Tab
+            label={`Letters of Medical Necessity (${lmnCount})`}
+            active={activeTab === 'Letter of Medical Necessity'}
+            onPress={() => setActiveTab('Letter of Medical Necessity')}
+          />
         </View>
       </View>
 
-      {/* Counter + view toggle */}
+      {/* Display used receipts toggle + Clear */}
       <View style={styles.subBar}>
-        <AppText variant="body2Bold14" color={Colors.textSecondary}>
-          {selectedCount} of {receipts.length} selected
-        </AppText>
-        <ViewToggle mode={viewMode} onChange={setViewMode} />
+        <Pressable
+          style={styles.toggleRow}
+          onPress={() => setShowUsed((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: showUsed }}
+          accessibilityLabel="Display used receipts"
+        >
+          <View style={[styles.toggleBox, showUsed && styles.toggleBoxChecked]}>
+            {showUsed && <CheckmarkIcon width={16} height={16} />}
+          </View>
+          <AppText variant="body1Regular16" color={Colors.textTitle}>
+            Display used receipts
+          </AppText>
+        </Pressable>
+        <Pressable
+          onPress={clearSelectedReceipts}
+          disabled={selectedCount === 0}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Clear selection"
+        >
+          <AppText
+            variant="body1Bold16"
+            color={selectedCount === 0 ? Colors.textDisabled : Colors.textAccent}
+          >
+            Clear
+          </AppText>
+        </Pressable>
       </View>
 
-      {viewMode === 'grid' ? (
-        <ScrollView contentContainerStyle={styles.gridContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.grid}>
-            {receipts.map((receipt) => (
-              <ReceiptGridCard
-                key={receipt.id}
-                receipt={receipt}
-                selected={isReceiptSelected(receipt.id)}
-                onToggle={() => toggleReceiptSelected(receipt.id)}
-                onOpenPreview={() => openPreview(receipt.id)}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      ) : (
-        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {receipts.map((receipt) => (
-            <ReceiptListRow
+      <ScrollView contentContainerStyle={styles.gridContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.grid}>
+          {visible.map((receipt) => (
+            <ReceiptGridCard
               key={receipt.id}
               receipt={receipt}
               selected={isReceiptSelected(receipt.id)}
+              attached={attachedIds.has(receipt.id)}
               onToggle={() => toggleReceiptSelected(receipt.id)}
-              onOpenPreview={() => openPreview(receipt.id)}
+              onOpen={() => openPreview(receipt.id)}
             />
           ))}
-        </ScrollView>
-      )}
-
-      {error && (
-        <View style={styles.errorBanner}>
-          <AppText variant="body2Regular14" color={Colors.textOnColor}>
-            {error}
-          </AppText>
         </View>
-      )}
+      </ScrollView>
 
-      {/* Bottom action bar (Req 4.4) */}
+      {/* Bottom action bar */}
       <View style={[styles.actionBar, { paddingBottom: insets.bottom + Spacing.xl }]}>
         <AppButton label="Close" variant="secondary" onPress={handleClose} style={styles.actionBtn} />
         <AppButton
           label="Submit"
           variant="primary"
-          disabled={selectedCount === 0 || submitting} // Req 4.5 / 6.2 / 7.3
+          disabled={selectedCount === 0}
           onPress={handleSubmit}
           style={styles.actionBtn}
         />
@@ -155,104 +166,52 @@ export default function SelectSavedReceiptScreen() {
   );
 }
 
-/**
- * Grid/list view toggle. Icons are drawn with plain Views (no new assets) to
- * match the segmented control in the design — a 2x2 grid glyph and a list glyph.
- */
-function ViewToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
-  return (
-    <View style={styles.toggle}>
-      <Pressable
-        onPress={() => onChange('grid')}
-        style={[styles.toggleBtn, mode === 'grid' && styles.toggleBtnActive]}
-        accessibilityRole="button"
-        accessibilityLabel="Grid view"
-        accessibilityState={{ selected: mode === 'grid' }}
-      >
-        <GridGlyph active={mode === 'grid'} />
-      </Pressable>
-      <Pressable
-        onPress={() => onChange('list')}
-        style={[styles.toggleBtn, mode === 'list' && styles.toggleBtnActive]}
-        accessibilityRole="button"
-        accessibilityLabel="List view"
-        accessibilityState={{ selected: mode === 'list' }}
-      >
-        <ListGlyph active={mode === 'list'} />
-      </Pressable>
-    </View>
-  );
-}
-
-function GridGlyph({ active }: { active: boolean }) {
-  const color = active ? Colors.textTitle : Colors.textSecondary;
-  return (
-    <View style={styles.gridGlyph}>
-      {[0, 1, 2, 3].map((i) => (
-        <View key={i} style={[styles.gridGlyphCell, { backgroundColor: color }]} />
-      ))}
-    </View>
-  );
-}
-
-function ListGlyph({ active }: { active: boolean }) {
-  const color = active ? Colors.textTitle : Colors.textSecondary;
-  return (
-    <View style={styles.listGlyph}>
-      {[0, 1, 2].map((i) => (
-        <View key={i} style={styles.listGlyphRow}>
-          <View style={[styles.listGlyphDot, { backgroundColor: color }]} />
-          <View style={[styles.listGlyphLine, { backgroundColor: color }]} />
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/** Checkbox with a >=44x44 tap target (Req: accessible touch target). */
-function Checkbox({
-  checked,
-  onToggle,
-  label,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  label: string;
-}) {
+function Tab({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
     <Pressable
-      onPress={onToggle}
-      style={styles.checkboxHit}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      accessibilityLabel={label}
+      onPress={onPress}
+      style={[styles.tab, active && styles.tabActive]}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
     >
-      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-        {checked && <CheckmarkIcon width={16} height={16} />}
-      </View>
+      <AppText
+        variant="body2Bold14"
+        color={active ? Colors.textTitle : Colors.textAccent}
+        numberOfLines={2}
+        style={styles.tabLabel}
+      >
+        {label}
+      </AppText>
     </Pressable>
   );
 }
 
-/** Large receipt card for the grid view: tappable image + corner checkbox. */
+/** Grid tile. Tapping the image opens the full preview; the corner checkbox
+ *  toggles selection (the two actions are separate so previewing never
+ *  accidentally selects). Already-attached tiles are dimmed, badged, and can't
+ *  be selected (but can still be opened to preview). */
 function ReceiptGridCard({
   receipt,
   selected,
+  attached,
   onToggle,
-  onOpenPreview,
+  onOpen,
 }: {
   receipt: Receipt;
   selected: boolean;
+  attached: boolean;
   onToggle: () => void;
-  onOpenPreview: () => void;
+  onOpen: () => void;
 }) {
+  const checked = attached || selected;
   return (
-    <View style={[styles.card, selected && styles.cardSelected]}>
+    <View style={[styles.card, selected && styles.cardSelected, attached && styles.cardAttached]}>
+      {/* Image opens the preview. */}
       <Pressable
-        onPress={onOpenPreview}
+        onPress={onOpen}
         style={styles.cardImageWrap}
         accessibilityRole="imagebutton"
-        accessibilityLabel={`Preview ${receipt.name}`}
+        accessibilityLabel={`Open ${receipt.name}`}
       >
         {receipt.image ? (
           <Image source={receipt.image} style={styles.cardImage} resizeMode="cover" />
@@ -260,54 +219,30 @@ function ReceiptGridCard({
           <View style={styles.picPaper} />
         )}
       </Pressable>
-      <View style={styles.cardCheckbox}>
-        <Checkbox
-          checked={selected}
-          onToggle={onToggle}
-          label={`Select ${receipt.name}`}
-        />
-      </View>
-    </View>
-  );
-}
 
-/** List row: thumbnail + filename + date range + trailing checkbox. */
-function ReceiptListRow({
-  receipt,
-  selected,
-  onToggle,
-  onOpenPreview,
-}: {
-  receipt: Receipt;
-  selected: boolean;
-  onToggle: () => void;
-  onOpenPreview: () => void;
-}) {
-  return (
-    <View style={[styles.row, selected && styles.rowSelected]}>
+      {/* Corner checkbox toggles selection (disabled when already attached). */}
       <Pressable
-        onPress={onOpenPreview}
-        style={styles.rowThumb}
-        accessibilityRole="imagebutton"
-        accessibilityLabel={`Preview ${receipt.name}`}
+        onPress={attached ? undefined : onToggle}
+        disabled={attached}
+        style={styles.checkboxHit}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked, disabled: attached }}
+        accessibilityLabel={`Select ${receipt.name}`}
       >
-        {receipt.image ? (
-          <Image source={receipt.image} style={styles.rowThumbImage} resizeMode="cover" />
-        ) : (
-          <View style={styles.picPaper} />
-        )}
+        <View
+          style={[styles.checkbox, checked && styles.checkboxChecked, attached && styles.checkboxAttached]}
+        >
+          {checked && <CheckmarkIcon width={16} height={16} />}
+        </View>
       </Pressable>
-      <View style={styles.rowText}>
-        <AppText variant="body1Regular16" color={Colors.textTitle} numberOfLines={1}>
-          {receipt.name}
-        </AppText>
-        {receipt.dateRange && (
-          <AppText variant="body2Regular14" color={Colors.textSecondary}>
-            {receipt.dateRange}
+
+      {attached && (
+        <View style={styles.attachedBadge}>
+          <AppText variant="captionMedium12" color={Colors.textTitle}>
+            Already attached
           </AppText>
-        )}
-      </View>
-      <Checkbox checked={selected} onToggle={onToggle} label={`Select ${receipt.name}`} />
+        </View>
+      )}
     </View>
   );
 }
@@ -322,86 +257,66 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
     borderBottomLeftRadius: Radius.xl,
     borderBottomRightRadius: Radius.xl,
+    gap: Spacing.lg,
     boxShadow: '0px 6px 15px rgba(0,0,0,0.04)',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 2,
-    flexShrink: 1,
+  },
+  tabs: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  tab: {
+    flex: 1,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.module,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabActive: {
+    backgroundColor: Colors.canvas,
+    borderWidth: 1,
+    borderColor: Colors.border1,
+    boxShadow: '0px 1px 3px rgba(0,0,0,0.08)',
+  },
+  tabLabel: {
+    textAlign: 'center',
   },
   subBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
-
-  // View toggle (segmented control)
-  toggle: {
+  toggleRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.module,
-    borderRadius: Radius.md,
-    padding: 3,
-    gap: 3,
-    borderWidth: 1,
-    borderColor: Colors.border1,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flexShrink: 1,
   },
-  toggleBtn: {
-    width: 36,
-    height: 32,
+  toggleBox: {
+    width: 24,
+    height: 24,
     borderRadius: Radius.sm,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.canvas,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleBtnActive: {
-    backgroundColor: Colors.canvas,
-    boxShadow: '0px 1px 3px rgba(0,0,0,0.12)',
+  toggleBoxChecked: {
+    backgroundColor: Colors.accentActive,
+    borderColor: Colors.accentActive,
   },
-  gridGlyph: {
-    width: 16,
-    height: 16,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-  },
-  gridGlyphCell: {
-    width: 7,
-    height: 7,
-    borderRadius: 1.5,
-  },
-  listGlyph: {
-    width: 16,
-    height: 16,
-    justifyContent: 'space-between',
-    paddingVertical: 1,
-  },
-  listGlyphRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  listGlyphDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-  },
-  listGlyphLine: {
-    flex: 1,
-    height: 2,
-    borderRadius: 1,
-  },
-
-  // Grid view
   gridContent: {
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
     paddingBottom: 130,
   },
   grid: {
@@ -410,7 +325,6 @@ const styles = StyleSheet.create({
     gap: CARD_GAP,
   },
   card: {
-    // Three columns within the phone frame width.
     width: '31%',
     aspectRatio: 0.72,
     borderRadius: Radius.lg,
@@ -424,6 +338,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.accentActive,
   },
+  cardAttached: {
+    opacity: 0.6,
+  },
   cardImageWrap: {
     flex: 1,
     borderRadius: Radius.sm,
@@ -434,50 +351,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  cardCheckbox: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-  },
-
-  // List view
-  listContent: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: 130,
-    gap: Spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.canvas,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border1,
-    padding: Spacing.md,
-  },
-  rowSelected: {
-    borderWidth: 2,
-    borderColor: Colors.accentActive,
-  },
-  rowThumb: {
-    width: 56,
-    height: 56,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Colors.border1,
-    overflow: 'hidden',
-    backgroundColor: Colors.canvas,
-  },
-  rowThumbImage: {
-    width: '100%',
-    height: '100%',
-  },
-  rowText: {
-    flex: 1,
-    gap: 2,
-  },
-
   picPaper: {
     flex: 1,
     margin: '12%',
@@ -486,9 +359,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border1,
   },
-
-  // Checkbox
   checkboxHit: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
     width: 44,
     height: 44,
     alignItems: 'center',
@@ -508,16 +382,21 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentActive,
     borderColor: Colors.accentActive,
   },
-
-  errorBanner: {
+  checkboxAttached: {
+    backgroundColor: Colors.border,
+    borderColor: Colors.border,
+  },
+  attachedBadge: {
     position: 'absolute',
-    left: Spacing.lg,
-    right: Spacing.lg,
-    bottom: 130,
-    backgroundColor: Colors.danger,
+    left: Spacing.sm,
+    right: Spacing.sm,
+    bottom: Spacing.sm,
+    backgroundColor: Colors.canvas,
     borderRadius: Radius.md,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    alignItems: 'center',
+    boxShadow: '0px 1px 3px rgba(0,0,0,0.12)',
   },
   actionBar: {
     backgroundColor: Colors.canvas,

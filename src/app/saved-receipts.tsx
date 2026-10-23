@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddDocumentsSheet } from '@/components/add-documents-sheet';
@@ -13,21 +13,43 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAppState } from '@/data/app-state';
 
 /**
- * Saved Receipts page (Requirement 3).
- * Dynamic header count, search affordance, most-recent-first list,
- * and a pinned full-width "Upload Receipt" button.
+ * Saved Receipts page — the main list page reached from My Documents.
+ *
+ * Dynamic header count, search affordance, most-recent-first list with
+ * per-card checkboxes. With >=1 receipt selected the bottom bar offers
+ * "Associate with Claim"; otherwise it offers "Upload Receipt".
+ *
+ * (The Activity Details attach flow uses the separate /select-saved-receipt
+ * grid picker, not this page.)
  */
 export default function SavedReceiptsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { receipts, snackbarVisible, dismissSnackbar } = useAppState();
+  const {
+    receipts,
+    snackbarVisible,
+    dismissSnackbar,
+    selectedReceiptIds,
+    toggleReceiptSelected,
+    isReceiptSelected,
+    clearSelectedReceipts,
+  } = useAppState();
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
 
+  const selectionCount = selectedReceiptIds.length;
+  const hasSelection = selectionCount > 0;
+
   const goToGalleryPicker = () => {
     setSheetVisible(false);
     router.push('/gallery-picker');
+  };
+
+  // With >=1 receipt selected, associate them all with a claim via the
+  // Associate With Claims screen (multi mode — it reads selectedReceiptIds).
+  const goToAssociate = () => {
+    router.push({ pathname: '/associate-claim', params: { from: 'saved-receipts' } });
   };
 
   const filtered = useMemo(() => {
@@ -86,6 +108,9 @@ export default function SavedReceiptsScreen() {
         renderItem={({ item }) => (
           <ReceiptCard
             receipt={item}
+            selectable
+            selected={isReceiptSelected(item.id)}
+            onToggleSelect={() => toggleReceiptSelected(item.id)}
             onPress={() =>
               router.push({ pathname: '/receipt-details', params: { receiptId: item.id } })
             }
@@ -95,7 +120,24 @@ export default function SavedReceiptsScreen() {
       />
 
       <View style={styles.actionBar}>
-        <AppButton label="Upload Receipt" onPress={() => setSheetVisible(true)} />
+        {hasSelection ? (
+          <>
+            {/* Selection summary + quick deselect-all */}
+            <View style={styles.selectionRow}>
+              <AppText variant="body2Bold14" color={Colors.textSecondary}>
+                {selectionCount} selected
+              </AppText>
+              <Pressable onPress={clearSelectedReceipts} hitSlop={8} accessibilityRole="button">
+                <AppText variant="body2Bold14" color={Colors.textAccent}>
+                  Clear
+                </AppText>
+              </Pressable>
+            </View>
+            <AppButton label="Associate with Claim" onPress={goToAssociate} />
+          </>
+        ) : (
+          <AppButton label="Upload Receipt" onPress={() => setSheetVisible(true)} />
+        )}
       </View>
 
       <Snackbar
@@ -167,5 +209,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
     paddingBottom: 48,
+    gap: Spacing.md,
+  },
+  selectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 });

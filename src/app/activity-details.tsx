@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AddFileIcon from '@/assets/figma/claim/add-file.svg';
@@ -70,10 +70,14 @@ export default function ActivityDetailsScreen() {
   }
 
   const needsDocs = claim.status === 'needs-documentation';
-  const hasAttachment = Boolean(claim.attachedReceiptId);
-  const attachedReceipt = claim.attachedReceiptId
-    ? receipts.find((r) => r.id === claim.attachedReceiptId)
-    : undefined;
+  // All receipts attached to this claim (falls back to the singular id for
+  // backward compatibility). Activity Details shows one thumbnail per receipt.
+  const attachedReceiptIds =
+    claim.attachedReceiptIds ?? (claim.attachedReceiptId ? [claim.attachedReceiptId] : []);
+  const attachedReceipts = attachedReceiptIds
+    .map((id) => receipts.find((r) => r.id === id))
+    .filter((r): r is NonNullable<typeof r> => Boolean(r));
+  const hasAttachment = attachedReceipts.length > 0;
   const showConfirmation = attachConfirmationClaimId === claim.id;
 
   // Req 3.3: tapping Upload Document opens the Add Documents bottom sheet.
@@ -82,7 +86,7 @@ export default function ActivityDetailsScreen() {
     setSheetVisible(true);
   };
 
-  // From the sheet's "Saved Receipts" tile -> the Select_Saved_Receipt_Page.
+  // From the sheet's "Saved Receipts" tile -> the Select a Document grid picker.
   const goToSavedReceipts = () => {
     setSheetVisible(false);
     try {
@@ -137,20 +141,24 @@ export default function ActivityDetailsScreen() {
           <View style={styles.trackerDivider} />
         </View>
 
-        {/* Attached document thumbnail OR Add a File button (Req 2.3/2.4, 8.2) */}
+        {/* Attached document thumbnails OR Add a File button (Req 2.3/2.4, 8.2).
+            One thumbnail per attached receipt; each is numbered. */}
         {hasAttachment ? (
-          <View style={styles.docThumb}>
-            <View style={styles.docThumbBadge}>
-              <AppText variant="captionMedium12" color={Colors.textOnColor}>
-                1
-              </AppText>
-            </View>
-            <View
-              style={[
-                styles.docThumbInner,
-                attachedReceipt && { backgroundColor: attachedReceipt.thumbnailColor },
-              ]}
-            />
+          <View style={styles.docThumbRow}>
+            {attachedReceipts.map((r, i) => (
+              <View key={r.id} style={styles.docThumb}>
+                <View style={styles.docThumbBadge}>
+                  <AppText variant="captionMedium12" color={Colors.textOnColor}>
+                    {i + 1}
+                  </AppText>
+                </View>
+                {r.image ? (
+                  <Image source={r.image} style={styles.docThumbImage} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.docThumbInner, { backgroundColor: r.thumbnailColor }]} />
+                )}
+              </View>
+            ))}
           </View>
         ) : (
           <View style={styles.addFileButton}>
@@ -418,6 +426,15 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: Radius.sm,
     backgroundColor: Colors.module,
+  },
+  docThumbRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+  },
+  docThumbImage: {
+    flex: 1,
+    borderRadius: Radius.sm,
   },
 
   // Claim card

@@ -186,12 +186,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (c.id !== claimId) return c;
         ok = true;
         // Req 7.2 / 8.1 / 8.2 / 9.3: no longer needs documentation -> processing,
-        // with the receipt(s) recorded as attached. The first selected receipt
-        // is kept as the representative attachment shown on Activity Details.
+        // with the receipt(s) recorded as attached. Merge the newly selected
+        // ids into any already attached (dedup), and keep the first as the
+        // representative singular id for backward compatibility.
+        const merged = Array.from(new Set([...(c.attachedReceiptIds ?? []), ...receiptIds]));
         return {
           ...c,
           status: 'processing',
-          attachedReceiptId: receiptIds[0],
+          attachedReceiptId: merged[0],
+          attachedReceiptIds: merged,
         };
       }),
     );

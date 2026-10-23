@@ -16,14 +16,7 @@ export default function RootLayout() {
             name="activity-details"
             options={{ animation: 'slide_from_right' }}
           />
-          <Stack.Screen
-            name="select-saved-receipt"
-            options={{ animation: 'slide_from_right' }}
-          />
-          <Stack.Screen
-            name="select-document"
-            options={{ animation: 'slide_from_right' }}
-          />
+
           <Stack.Screen
             name="my-documents"
             options={{ animation: 'slide_from_right' }}
@@ -34,6 +27,14 @@ export default function RootLayout() {
           />
           <Stack.Screen
             name="receipt-details"
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="select-saved-receipt"
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="select-document"
             options={{ animation: 'slide_from_right' }}
           />
           <Stack.Screen
